@@ -1,0 +1,54 @@
+# 1. Compute the minimum distance between the buildings from the initial layer
+
+processing.run("native:shortestline", {'SOURCE':'$WORKING_DIRECTORY/buildings_cairo_unstructured.gpkg|layername=buildings_cairo_unstructured','DESTINATION':'$WORKING_DIRECTORY/buildings_cairo_unstructured.gpkg|layername=buildings_cairo_unstructured','METHOD':0,'NEIGHBORS':6,'DISTANCE':10,'OUTPUT':'$WORKING_DIRECTORY/minimum_distance.gpkg|layername=minimum_distance'})
+
+
+# 2. Calculate a bounding geometry later used for clipping features to only the street extent
+
+processing.run("qgis:minimumboundinggeometry", {'INPUT':'$WORKING_DIRECTORY/buildings_cairo_unstructured.gpkg|layername=buildings_cairo_unstructured','FIELD':'','TYPE':3,'OUTPUT':'$WORKING_DIRECTORY/bounding_geometry.gpkg|layername=bounding_geometry'})
+
+
+# 3. Intersection of the lines stating the minimum distance with the street area
+
+processing.run("native:intersection", {'INPUT':'$WORKING_DIRECTORY/minimum_distance.gpkg','OVERLAY':'$WORKING_DIRECTORY/bounding_geometry.gpkg','INPUT_FIELDS':[],'OVERLAY_FIELDS':[],'OVERLAY_FIELDS_PREFIX':'','OUTPUT':'$WORKING_DIRECTORY/minimum_distance_intersected.gpkg','GRID_SIZE':None})
+
+
+# 4. Create centroid points as approximate middle of the street at a certain point
+
+processing.run("native:centroids", {'INPUT':'$WORKING_DIRECTORY/minimum_distance.gpkg','ALL_PARTS':False,'OUTPUT':'$WORKING_DIRECTORY/minimum_distance_centroids.gpkg'})
+
+
+# 5. Calculate the shortest lines between centroid points --> creating an approximate road map
+
+processing.run("native:shortestline", {'SOURCE':'$WORKING_DIRECTORY/minimum_distance_centroids.gpkg','DESTINATION':'$WORKING_DIRECTORY/minimum_distance_centroids.gpkg','METHOD':0,'NEIGHBORS':4,'DISTANCE':15,'OUTPUT':'$WORKING_DIRECTORY/streetlines.gpkg'})
+
+
+# 6. Clip the street defining lines with the bounding geometry to delete shortes lines going through buildings
+
+processing.run("native:clip", {'INPUT':'$WORKING_DIRECTORY/streetlines.gpkg','OVERLAY':'$WORKING_DIRECTORY/bounding_geometry.gpkg','OUTPUT':'$WORKING_DIRECTORY/streetlines_clipped.gpkg'})
+
+
+# 7. Create a buffer around the street lines 
+
+processing.run("native:buffer", {'INPUT':'$WORKING_DIRECTORY/streetlines.gpkg|layername=streetlines','DISTANCE':10,'SEGMENTS':5,'END_CAP_STYLE':0,'JOIN_STYLE':0,'MITER_LIMIT':2,'DISSOLVE':False,'SEPARATE_DISJOINT':False,'OUTPUT':'$WORKING_DIRECTORY/streetlines_buffer.gpkg'})
+
+
+# 8. Clip the buffer to the bounding geometry to obtain the area where one can later hover over
+
+processing.run("native:clip", {'INPUT':'$WORKING_DIRECTORY/streetlines_buffer.gpkg','OVERLAY':'$WORKING_DIRECTORY/bounding_geometry.gpkg','OUTPUT':'$WORKING_DIRECTORY/streetlines_buffer_clipped.gpkg'})
+
+
+# 9. Dissolve the result from 8. to delete the overlaps and get the final non-building area
+
+processing.run("native:dissolve", {'INPUT':'$WORKING_DIRECTORY/streetlines_buffer_clipped.gpkg','FIELD':[],'SEPARATE_DISJOINT':False,'OUTPUT':'$WORKING_DIRECTORY/streetlines_buffer_dissolved.gpkg'})
+
+
+
+# 10. Construct Voronoi polygons around the centroids to define an area featuring a minimum distance
+
+processing.run("native:voronoipolygons", {'INPUT':'$WORKING_DIRECTORY/centroids_unstruc.gpkg','BUFFER':0,'TOLERANCE':0,'COPY_ATTRIBUTES':True,'OUTPUT':'$WORKING_DIRECTORY/voronoi_polygons.gpkg'})
+
+
+# 11. Intersect the Voronoi polygons with the dissolved street area to recieve the final output used in the R plotting
+
+processing.run("native:intersection", {'INPUT':'$WORKING_DIRECTORY/voronoi_polygons.gpkg','OVERLAY':'$WORKING_DIRECTORY/streetlines_buffer_dissolved.gpkg','INPUT_FIELDS':[],'OVERLAY_FIELDS':[],'OVERLAY_FIELDS_PREFIX':'','OUTPUT':'$WORKING_DIRECTORY/voronoi_polygons_intersected.gpkg','GRID_SIZE':None})

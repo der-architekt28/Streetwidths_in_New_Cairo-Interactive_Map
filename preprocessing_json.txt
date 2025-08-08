@@ -1,0 +1,166 @@
+# 1. Compute the minimum distance between the buildings from the initial layer
+
+{
+  "area_units": "m2",
+  "distance_units": "meters",
+  "ellipsoid": "EPSG:7030",
+  "inputs": {
+    "DESTINATION": "$WORKING_DIRECTORY/buildings_cairo_unstructured.gpkg|layername=buildings_cairo_unstructured",
+    "DISTANCE": 10.0,
+    "METHOD": 0,
+    "NEIGHBORS": 6,
+    "OUTPUT": "$WORKING_DIRECTORY/minimum_distance.gpkg|layername=minimum_distance",
+    "SOURCE": "$WORKING_DIRECTORY/buildings_cairo_unstructured.gpkg|layername=buildings_cairo_unstructured"
+  }
+}
+
+# 2. Calculate a bounding geometry later used for clipping features to only the street extent
+
+{
+  "area_units": "m2",
+  "distance_units": "meters",
+  "ellipsoid": "EPSG:7030",
+  "inputs": {
+    "FIELD": null,
+    "INPUT": "$WORKING_DIRECTORY/buildings_cairo_unstructured.gpkg|layername=buildings_cairo_unstructured",
+    "OUTPUT": "$WORKING_DIRECTORY/bounding_geometry.gpkg|layername=bounding_geometry",
+    "TYPE": 3
+  }
+}
+
+# 3. Intersection of the lines stating the minimum distance with the street area
+
+{
+  "area_units": "m2",
+  "distance_units": "meters",
+  "ellipsoid": "EPSG:7030",
+  "inputs": {
+    "GRID_SIZE": null,
+    "INPUT": "$WORKING_DIRECTORY/minimum_distance.gpkg",
+    "INPUT_FIELDS": [],
+    "OUTPUT": "$WORKING_DIRECTORY/minimum_distance_intersected.gpkg",
+    "OVERLAY": "$WORKING_DIRECTORY/bounding_geometry.gpkg",
+    "OVERLAY_FIELDS": [],
+    "OVERLAY_FIELDS_PREFIX": ""
+  }
+}
+
+# 4. Create centroid points as approximate middle of the street at a certain point
+
+{
+  "area_units": "m2",
+  "distance_units": "meters",
+  "ellipsoid": "EPSG:7030",
+  "inputs": {
+    "ALL_PARTS": false,
+    "INPUT": "$WORKING_DIRECTORY/minimum_distance.gpkg",
+    "OUTPUT": "$WORKING_DIRECTORY/minimum_distance_centroids.gpkg"
+  }
+}
+
+# 5. Calculate the shortest lines between centroid points --> creating an approximate road map
+
+{
+  "area_units": "m2",
+  "distance_units": "meters",
+  "ellipsoid": "EPSG:7030",
+  "inputs": {
+    "DESTINATION": "$WORKING_DIRECTORY/minimum_distance_centroids.gpkg",
+    "DISTANCE": 15.0,
+    "METHOD": 0,
+    "NEIGHBORS": 4,
+    "OUTPUT": "$WORKING_DIRECTORY/streetlines.gpkg",
+    "SOURCE": "$WORKING_DIRECTORY/minimum_distance_centroids.gpkg"
+  }
+}
+
+# 6. Clip the street defining lines with the bounding geometry to delete shortes lines going through buildings
+
+{
+  "area_units": "m2",
+  "distance_units": "meters",
+  "ellipsoid": "EPSG:7030",
+  "inputs": {
+    "INPUT": "$WORKING_DIRECTORY/streetlines.gpkg",
+    "OUTPUT": "$WORKING_DIRECTORY/streetlines_clipped.gpkg",
+    "OVERLAY": "$WORKING_DIRECTORY/bounding_geometry.gpkg"
+  }
+}
+
+# 7. Create a buffer around the street lines 
+
+{
+  "area_units": "m2",
+  "distance_units": "meters",
+  "ellipsoid": "EPSG:7030",
+  "inputs": {
+    "DISSOLVE": false,
+    "DISTANCE": 10.0,
+    "END_CAP_STYLE": 0,
+    "INPUT": "$WORKING_DIRECTORY/streetlines.gpkg|layername=streetlines",
+    "JOIN_STYLE": 0,
+    "MITER_LIMIT": 2.0,
+    "OUTPUT": "$WORKING_DIRECTORY/streetlines_buffer.gpkg",
+    "SEGMENTS": 5,
+    "SEPARATE_DISJOINT": false
+  }
+}
+
+# 8. Clip the buffer to the bounding geometry to obtain the area where one can later hover over
+
+{
+  "area_units": "m2",
+  "distance_units": "meters",
+  "ellipsoid": "EPSG:7030",
+  "inputs": {
+    "INPUT": "$WORKING_DIRECTORY/streetlines_buffer.gpkg",
+    "OUTPUT": "$WORKING_DIRECTORY/streetlines_buffer_clip.gpkg",
+    "OVERLAY": "$WORKING_DIRECTORY/bounding_geometry.gpkg"
+  }
+}
+
+# 9. Dissolve the result from 8. to delete the overlaps and get the final non-building area
+
+{
+  "area_units": "m2",
+  "distance_units": "meters",
+  "ellipsoid": "EPSG:7030",
+  "inputs": {
+    "FIELD": [],
+    "INPUT": "$WORKING_DIRECTORY/streetlines_buffer_clip.gpkg",
+    "OUTPUT": "$WORKING_DIRECTORY/streetlines_buffer_dissolved.gpkg",
+    "SEPARATE_DISJOINT": false
+  }
+}
+
+# 10. Construct Voronoi polygons around the centroids to define an area featuring a minimum distance
+
+{
+  "area_units": "m2",
+  "distance_units": "meters",
+  "ellipsoid": "EPSG:7030",
+  "inputs": {
+    "BUFFER": 0.0,
+    "COPY_ATTRIBUTES": true,
+    "INPUT": "$WORKING_DIRECTORY/minimum_distance_centroids.gpkg",
+    "OUTPUT": "$WORKING_DIRECTORY/voronoi_polygons.gpkg",
+    "TOLERANCE": 0.0
+  }
+}
+
+# 11. Intersect the Voronoi polygons with the dissolved street area to recieve the final output used in the R plotting
+
+{
+  "area_units": "m2",
+  "distance_units": "meters",
+  "ellipsoid": "EPSG:7030",
+  "inputs": {
+    "GRID_SIZE": null,
+    "INPUT": "$WORKING_DIRECTORY/voronoi_polygons.gpkg",
+    "INPUT_FIELDS": [],
+    "OUTPUT": "$WORKING_DIRECTORY/voronoi_polygons_intersected.gpkg",
+    "OVERLAY": "$WORKING_DIRECTORY/streetlines_buffer_dissolved.gpkg",
+    "OVERLAY_FIELDS": [],
+    "OVERLAY_FIELDS_PREFIX": ""
+  }
+}
