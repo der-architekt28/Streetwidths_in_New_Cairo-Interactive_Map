@@ -16,7 +16,8 @@ Such information might be valuable for assessing fire hazard, planning urban dev
  
  --- Explanation regarding the plot ---
  
- - The interactive HTML-graph allows the user to explore and analyse the space between rows of houses, illustrated by Voronoi polygons.
- - Each of the coloured shapes doesn't show the average, but instead the minimum distance occurring within the polygon area.
- - By hovering over the objects, the value indicating the distance is shown as number laying in a defined interval, as explained by the legend. 
- - Furthermore, hovering with the cursor highlights every polygon containing a value of the same interval, showing similarly narrow street lines. 
+ - The interactive HTML-graph allows the user to explore and analyse the space between rows of houses, illustrated by Voronoi polygons
+ - Each of the coloured shapes doesn't show the average, but instead the minimum distance occurring within the polygon area
+ - By hovering over the objects, the value indicating the distance is shown as number laying in a defined interval, as explained by the legend
+ - Furthermore, hovering with the cursor highlights every polygon containing a value of the same interval, showing similarly narrow street lines
+ - The map is connected to a scatter-plot, which shows the frequency of occurring street section distances (grouped to values rounded to 1/10 m --> 1,1m; 1,2m; etc.)
