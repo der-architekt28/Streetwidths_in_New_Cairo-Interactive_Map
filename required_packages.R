@@ -4,5 +4,8 @@ install.packages(
   "ggplot2",
   "dplyr",
   "ggiraph",
-  "ggtext"
+  "ggtext",
+  "patchwork",
+  "grid"
+
 )
