@@ -4,6 +4,8 @@ library(ggplot2)
 library(ggtext)
 library(ggiraph)
 library(dplyr)
+library(patchwork)
+library(grid)
 
 # Loading in the spatial dataset featuring the buildings
 c_unst <- st_read("$WORKING_DIRECTORY/new_cairo_unstructured.gpkg")
@@ -33,6 +35,48 @@ d_unst <- d_unst %>% mutate(dist_cat_2 = case_when(
   TRUE ~ '< 2 m'
 ))
 
+# Rounding the distances for the scatterplot
+d_unst <- d_unst %>% mutate(dist_rounded = round(d_unst$distance, digits = 1))
+
+# Getting the frequency of each rounded value
+d_unst <- transform(d_unst, dist_frequency=ave(seq(nrow(d_unst)), dist_rounded, FUN=length))
+
+# Creating the scatterplot --> x: observed distances as shortes lines between two buildings, y: frequency within the whole area
+scatter_plot <- ggplot(d_unst, aes(
+  dist_rounded,
+  dist_frequency,
+  tooltip = dist_cat_2,
+  data_id = dist_category,
+  color = dist_category
+)) +
+  geom_point_interactive(data = d_unst, size=2, pch=15) +
+  geom_smooth(color="white", linewidth = 0.3) +
+  scale_x_continuous(breaks = seq(0, 10, by = 1)) +
+  xlab("Distance [m]") +
+  ylab("Frequency") +
+  labs(tag="B") +
+  labs(fill = expression(paste("Distance [m]"))) +
+  scale_color_manual_interactive(labels = c("0-2", "2-4", "4-6", "6-8", "8-10"), 
+                                 values=c('magenta2', 'slateblue', 'skyblue1', 'limegreen', 'yellow')) +
+  theme_minimal() +
+  theme(
+    axis.title.x = element_text(color="white", size=8),
+    axis.title.y = element_text(color="white", size=8),
+    legend.position = "none",
+    plot.margin = margin(t = 0, 
+                         r = 0,  
+                         b = 0,  
+                         l = 0),
+    plot.background = element_rect(fill = "black"),
+    panel.background = element_rect(fill = "black",
+                                    colour = "black",
+                                    linewidth = 0.5, linetype = "solid"),
+    panel.grid.major = element_line(linewidth = 0.5, linetype = 'solid',
+                                    colour = "grey30"), 
+    panel.grid.minor = element_line(linewidth = 0.25, linetype = 'solid',
+                                    colour = "grey30")
+  )
+
 # Creating the interactive plot depicting the buildings along with the 
 # distances between them
 distance_plot <- ggplot() +
@@ -61,6 +105,21 @@ distance_plot <- ggplot() +
         panel.grid.minor = element_line(linewidth = 0.25, linetype = 'solid',
                                         colour = "grey30"))
 
+# Combining the two plots
+combined_plot <- distance_plot + 
+  inset_element(
+    scatter_plot,
+    left = 0.00,
+    right = 0.57,
+    top = 0.35,
+    bottom = 0.00
+  )
+labelled_plot <- combined_plot +
+  plot_annotation(title = "Minimum width of street sections in New Cairo",
+                  theme=theme(
+                    plot.title = element_textbox_simple(color = "white", size=16),
+                    plot.background = element_rect(fill = "black")
+                  ))
 
 # Customizing the animations provided by ggiraph
 # Editing the textboxes
@@ -79,7 +138,7 @@ hover_css <- "
 "
 
 # Creating the interactive plot as gg-object, adding tooltip and hover options
-final_plot <- girafe(ggobj = distance_plot)
+final_plot <- girafe(ggobj = labelled_plot)
 final_plot <- girafe_options(
   final_plot,
   opts_hover(css = hover_css),
@@ -87,4 +146,4 @@ final_plot <- girafe_options(
 )
 
 # Exporting the plot as HTML-file
-htmltools::save_html(final_plot, "$WORKING_DIRECTORY/streetwidth_new_cairo_interactive.html")
+htmltools::save_html(final_plot, "$WORKING_DIRECTORY/streetwidth_new_cairo_interactive_updated.html")
